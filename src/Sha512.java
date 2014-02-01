@@ -1,4 +1,5 @@
 import java.nio.charset.Charset;
+import java.security.MessageDigest;
 
 
 public class Sha512 {
@@ -42,7 +43,7 @@ public class Sha512 {
         int new_length = with_one.length*8;     //get new length in bits
 
         //find length multiple of 512
-        while (new_length % 1024 != 960) {       
+        while (new_length % 1024 != 896) {       
             new_length += 8;
         }
 
@@ -50,8 +51,8 @@ public class Sha512 {
         byte[] with_zeros = new byte[new_length/8];
         System.arraycopy(with_one, 0 , with_zeros, 0, with_one.length);
 
-        //add 64 bits for original length
-        byte[] output = new byte[with_zeros.length + 8];
+        //add 64 bits for original length (theoretically could do 128)
+        byte[] output = new byte[with_zeros.length + 16];
         for (int i = 0; i < 8; i++) {
             output[output.length -1 - i] = (byte) ((orig_len_bits >>> (8 * i)) & 0xFF);
         } 
@@ -66,10 +67,10 @@ public class Sha512 {
             
             //divide chunk into 16 64 bit words
             for (int j = 0; j < 16; j++) {     
-                w[j] =  ((output[i*1024/8 + 8*j] << 56) & 0xFF00000000000000L) | ((output[i*1024/8 + 8*j+1] << 48) & 0x00FF000000000000L);
-                w[j] |= ((output[i*1024/8 + 8*j+2] << 40) & 0xFF0000000000L) | ((output[i*1024/8 + 8*j+3] << 32) & 0xFF00000000L);
-                w[j] |= ((output[i*1024/8 + 8*j+4] << 24) & 0xFF000000L) | ((output[i*1024/8 + 8*j+5] << 16) & 0xFF0000L);
-                w[j] |= ((output[i*1024/8 + 8*j+6] << 8) & 0xFF00L) | ((output[i*1024/8 + 8*j+7]) & 0xFFL);
+                w[j] = (((long)(output[i*1024/8 + 8*j]) << 56) & 0xFF00000000000000L) | (((long)(output[i*1024/8 + 8*j+1]) << 48) & 0x00FF000000000000L);
+                w[j] |= (((long)(output[i*1024/8 + 8*j+2]) << 40) & 0x0000FF0000000000L) | (((long)(output[i*1024/8 + 8*j+3]) << 32) & 0x000000FF00000000L);
+                w[j] |= (((long)(output[i*1024/8 + 8*j+4]) << 24) & 0xFF000000L) | (((long)(output[i*1024/8 + 8*j+5]) << 16) & 0xFF0000L);
+                w[j] |= ((long)((output[i*1024/8 + 8*j+6]) << 8) & 0xFF00L) | ((long)((output[i*1024/8 + 8*j+7])) & 0xFFL);
             }
             //extend first 16 into remaining
             for (int j = 16; j < 80; j++) {
@@ -115,60 +116,41 @@ public class Sha512 {
             h6 = h6 + g;
             h7 = h7 + h;          
         }
-        System.out.println(Long.toHexString(h0));
-        System.out.println(Long.toHexString(h1));
-
-        System.out.println(Long.toHexString(h2));
-        System.out.println(Long.toHexString(h3));
-        System.out.println(Long.toHexString(h4));
-        System.out.println(Long.toHexString(h5));
-        System.out.println(Long.toHexString(h6));
-        System.out.println(Long.toHexString(h7));
-
 
         byte[] hash = new byte[64];
         for (int j = 0; j < 8; j++) {
-            hash[j] = (byte) ((h0 >>> 56-j*8) & 0xFF);
+            hash[j] = (byte) ((h0 >>> (56-j*8)) & 0xFF);
         }
         for (int j = 0; j < 8; j++) {
-            hash[j+8] = (byte) ((h1 >>> 56-j*8) & 0xFF);
+            hash[j+8] = (byte) ((h1 >>> (56-j*8)) & 0xFF);
         }
         for (int j = 0; j < 8; j++) {
-            hash[j+16] = (byte) ((h2 >>> 56-j*8) & 0xFF);
+            hash[j+16] = (byte) ((h2 >>> (56-j*8)) & 0xFF);
         }
         for (int j = 0; j < 8; j++) {
-            hash[j+24] = (byte) ((h3 >>> 56-j*8) & 0xFF);
+            hash[j+24] = (byte) ((h3 >>> (56-j*8)) & 0xFF);
         }
         for (int j = 0; j < 8; j++) {
-            hash[j+32] = (byte) ((h4 >>> 56-j*8) & 0xFF);
+            hash[j+32] = (byte) ((h4 >>> (56-j*8)) & 0xFF);
         }
         for (int j = 0; j < 8; j++) {
-            hash[j+40] = (byte) ((h5 >>> 56-j*8) & 0xFF);
+            hash[j+40] = (byte) ((h5 >>> (56-j*8)) & 0xFF);
         }
         for (int j = 0; j < 8; j++) {
-            hash[j+48] = (byte) ((h6 >>> 56-j*8) & 0xFF);
+            hash[j+48] = (byte) ((h6 >>> (56-j*8)) & 0xFF);
         }
         for (int j = 0; j < 8; j++) {
-            hash[j+56] = (byte) ((h7 >>> 56-j*8) & 0xFF);
+            hash[j+56] = (byte) ((h7 >>> (56-j*8)) & 0xFF);
         }
         return hash;
     }
  
-    public static void main(String[] args) {
-        Charset cs = Charset.forName("UTF-8");
-        String value = "Hello";
-        byte[] data = value.getBytes(cs);
-        byte[] hash = Sha512.encode(data);
-
-        StringBuilder hex = new StringBuilder(hash.length * 2);
-        int len = hash.length;
-        for (int i = 0 ; i < len ; i++) {
-            hex.append(String.format("%02X", hash[i]));
-        }       
-        System.out.println( hex.toString());
-    }
+ 
+        
+ 
     
     private static long right_rotate(long n, long d) {
+        
         return (n >>> d) | (n << (64 - d));
     }
     
